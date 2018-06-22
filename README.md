@@ -3,17 +3,9 @@
 Extremely experimental!  Proceed with caution.
 
 This is a demo app that can access your synced Firefox passwords
-using an OAuth authorization flow.  It depends on some
-[unrelased](https://github.com/mozilla/fxa-crypto-relier/pull/14/files)
-[features](https://github.com/mozilla-services/tokenserver/pull/115/files)
-in Firefox Accounts, so it will only work if you've got a Firefox
-instance that's syncing to this dev environment:
-
-    https://oauth-sync.dev.lcip.org
-
-You can point a Firefox instance to this environment by using
-about:config to create a pref named `identity.fxaccounts.autoconfig.uri`
-that contains the above URL.
+using an OAuth authorization flow.  You'll need to create a
+Firefox Account, sign in to Firefox, and sync some saved passwords
+before we can do anything interesting here.
 
 Once you've got that set up and syncing, there are two things in
 this repo that you might find interesting.

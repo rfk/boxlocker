@@ -25,9 +25,9 @@ from fxa._utils import HawkTokenAuth
 
 import tabulate
 
-ISSUER = 'https://oauth-sync.dev.lcip.org'
-CLIENT_ID = '3C8BD3FE92E1DDF1'.lower()
-REDIRECT_URI = 'http://localhost:13131/oauth/complete'
+ISSUER = 'https://accounts.firefox.com'
+CLIENT_ID = '98adfa37698f255b'.lower()
+REDIRECT_URI = 'https://lockbox.firefox.com/fxa/ios-redirect.html'
 SCOPE = 'https://identity.mozilla.com/apps/oldsync'
 
 CRYPTO_BACKEND = default_backend()
@@ -37,6 +37,14 @@ def get_json(url, **kwds):
     r = requests.get(url, **kwds)
     r.raise_for_status()
     return r.json()
+
+
+class KeyBundle:
+    """A little helper class to hold a sync key bundle."""
+
+    def __init__(self, enc_key, mac_key):
+        self.enc_key = enc_key
+        self.mac_key = mac_key
 
 
 def decrypt_bso(key_bundle, data):
@@ -72,8 +80,13 @@ def authenticate(config):
     state = os.urandom(8).encode('hex')
     (pkce_challenge, pkce_verifier) = client.generate_pkce_challenge()
 
-    sys.stdout.write("Launching OAuth flow...")
-    sys.stdout.flush()
+    print "I will now launch the OAuth flow in a new browser window."
+    print "When it completes, copy the 'code' parameter from the page URL"
+    print "and paste it below."
+    print ""
+    print "Ready? Hit enter to continue",
+    raw_input()
+
     webbrowser.get().open(client.get_redirect_url(
         state=state,
         scope=SCOPE,
@@ -83,32 +96,8 @@ def authenticate(config):
         **pkce_challenge
     ))
 
-    uri = urlparse.urlparse(REDIRECT_URI)
-    assert uri.scheme == 'http'
-
-    params = {}
-    def app(environ, start_response):
-        target = wsgiref.util.request_uri(environ, include_query=False)
-        if target != REDIRECT_URI:
-            raise RuntimeError("unexpected redirect target: " + target)
-        params.update(urlparse.parse_qsl(environ['QUERY_STRING']))
-        start_response("200 OK", [("Content-Type", "text/plain")])
-        return ["OK!"]
-
-    server = wsgiref.simple_server.make_server(
-        uri.hostname,
-        uri.port,
-        app,
-        handler_class=QuietRequestHandler,
-    )
-    server.log_message = lambda *a: None
-    server.handle_request()
-
-    if not params:
-        raise RuntimeError("failed to receive params via redirect")
-    sys.stdout.write("success!\n")
-
-    tokens = client.trade_code(params["code"], **pkce_verifier)
+    code = raw_input("Code: ")
+    tokens = client.trade_code(code, **pkce_verifier)
 
     keys_jwe = jwcrypto.jwe.JWE()
     keys_jwe.deserialize(tokens.pop("keys_jwe"))
@@ -116,20 +105,6 @@ def authenticate(config):
     tokens["keys"] = json.loads(keys_jwe.payload)
 
     return tokens
-
-
-class QuietRequestHandler(wsgiref.simple_server.WSGIRequestHandler):
-
-    def log_message(self, *args):
-        pass
-
-
-class KeyBundle:
-    """A little helper class to hold a sync key bundle."""
-
-    def __init__(self, enc_key, mac_key):
-        self.enc_key = enc_key
-        self.mac_key = mac_key
 
 
 def main():

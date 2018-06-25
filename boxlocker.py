@@ -151,7 +151,7 @@ def main():
             print "No synced passwords."
         else:
             passwords = [decrypt_bso(default_key_bundle, p) for p in passwords]
-            passwords = [(p["id"], p["hostname"], p["username"], p["password"]) for p in passwords]
+            passwords = [(p["id"], p["hostname"], p["username"], p["password"]) for p in passwords if not p.get("deleted", False)]
             print tabulate.tabulate(
                 passwords,
                 headers=["id", "hostname", "username", "password"],
